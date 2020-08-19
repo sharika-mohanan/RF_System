@@ -21,7 +21,6 @@ M4f = F2/F1; M4f_Id = RI2*Mag1/(RI1*Mag2); bta = M4f/M4f_Id; % non-ideal, ideal 
 
 
 sin_alpha1 = NA1/RI1; % maximum acceptance angle of O1
-k0 = 2*pi/lambda; % wavenumber
 
 % coordinate system
 xc = (-IS/2):1:(IS/2)-1; % lateral coordinates
@@ -29,7 +28,6 @@ xc = (-IS/2):1:(IS/2)-1; % lateral coordinates
 rxy = sqrt(xp.^2+yp.^2); % radial coordinates
 
 SF1 = Mag1_Eff / (PS * IS); % sampling frequency, pupil plane of O1
-SF2 = Mag2_Eff / (PS * IS); % sampling frequency, pupil plane of O2
 
 % sine, cos of the ray angles 
 sine1 = (rxy .* SF1 .* lambda) ./ RI1; 
@@ -71,21 +69,24 @@ end
 [row2,col2] = find(pupil_mask_NId);
 
 %%
+ZC_Ideal = zeros(25,numel(Depz));
+ZC_NIdeal = zeros(25,numel(Depz));
 
 for ii=1:numel(Depz)
 
-    % Ideal Mapping phase
-    OPD_Id =  -((sine1.^2.*Depz(ii)^2)./f1); % OPD of RF system
+    % Ideal Mapping wavefront
+    
+    OPD_Id =  -((sine1.^2.*Depz(ii)^2)./f1); % OPD of wavefront for an ideal RF system
     
     Df = pupil_mask_Id.*((cos1)-(mean(mean(cos1(pupil_mask_Id==1))))); % Defocus mode
-    Df_CId(ii) = sum(sum(OPD_Id.*Df))/sum(sum(Df.^2)); % Defocus coefficient
-    Df_Id = Df_CId(ii).*Df; 
+    Df_CId = sum(sum(OPD_Id.*Df))/sum(sum(Df.^2)); % Defocus coefficient
+    Df_Id = Df_CId.*Df; 
     
     OPD_Id = OPD_Id - Df_Id; % removal of defocus term
 
-    a_PD_Ideal(:,ii) = zernike_coeffs(OPD_Id(min(row1):max(row1),min(col1):max(col1)), 25, 256); % calculation of zernike coefficients 
+    ZC_Ideal(:,ii) = zernike_coeffs(OPD_Id(min(row1):max(row1),min(col1):max(col1)), 25, 256); % calculation of zernike coefficients 
     
-    % Non-Ideal Mapping Phase
+    % Non-Ideal Mapping wavefront
 
     OPD_NId1 = -(cos1.*Depz(ii))-((sine1.^2.*Depz(ii)^2)./(2.*f1)); % OPD, O1
     OPD_NId2 = (cos2.*Depz(ii))-((sine2.^2.*Depz(ii)^2)./(2.*f2)); %OPD, O2
@@ -94,27 +95,27 @@ for ii=1:numel(Depz)
     % defocus function for under and overmagnified cases
     if bta<=1
     Df = pupil_mask_NId.*(cos2-(mean(mean(cos2(pupil_mask_NId==1)))));
-    Df_CNId(ii) = sum(sum ((OPD_NId2+OPD_NId1).*Df))/sum(sum(Df.^2)); 
-    Df_NId = Df_CNId(ii).*Df; 
+    Df_CNId = sum(sum ((OPD_NId2+OPD_NId1).*Df))/sum(sum(Df.^2)); 
+    Df_NId = Df_CNId.*Df; 
     elseif bta>1
     Df = pupil_mask_NId.*(cos1-(mean(mean(cos1(pupil_mask_NId==1)))));
-    Df_CNId(ii) = sum(sum ((OPD_NId2+OPD_NId1).*Df))/sum(sum(Df.^2)); 
-    Df_NId = Df_CNId(ii).*Df; 
+    Df_CNId = sum(sum ((OPD_NId2+OPD_NId1).*Df))/sum(sum(Df.^2)); 
+    Df_NId = Df_CNId.*Df; 
     end
     
     OPD_NId = OPD_NId - Df_NId; 
     
-    a_PD_NIdeal(:,ii) = zernike_coeffs(OPD_NId(min(row2):max(row2),min(col2):max(col2)), 25, 256); % calculation of zernike coefficient
+    ZC_NIdeal(:,ii) = zernike_coeffs(OPD_NId(min(row2):max(row2),min(col2):max(col2)), 25, 256); % calculation of zernike coefficient
  
    disp(Depz(ii))
 
 end
 
-SAc_z(:,1) =  real(a_PD_Ideal(11,:)); % ideal config. first order spherical aberration
-SAc_z(:,2) =  real(a_PD_NIdeal(11,:)); % non-ideal config. first order spherical aberration
+SAc_z(:,1) =  real(ZC_Ideal(11,:)); % ideal config. first order spherical aberration
+SAc_z(:,2) =  real(ZC_NIdeal(11,:)); % non-ideal config. first order spherical aberration
 
 % plot final results
-figure(1),plot(Depz,(a_PD_Ideal(11,:)),'r',Depz,(a_PD_NIdeal(11,:)),'r*'),title('First Order Spherical'),legend('Ideal','Non-Ideal')
+figure(1),plot(Depz,(ZC_Ideal(11,:)),'r',Depz,(ZC_NIdeal(11,:)),'r*'),title('First Order Spherical'),legend('Ideal','Non-Ideal')
 
 
 
